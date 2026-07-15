@@ -1,0 +1,55 @@
+version: '3.8'
+
+services:
+  backend:
+    build: ./backend
+    container_name: shopgaran_backend
+    restart: always
+    ports:
+      - "4000:4000"
+    environment:
+      - DB_HOST=db
+      - DB_USER=root
+      - DB_PASSWORD=root
+      - DB_NAME=popeyes_clone
+    depends_on:
+      - db
+    networks:
+      - shop_network
+
+  frontend:
+    build: ./frontend
+    container_name: shopgaran_frontend
+    restart: always
+    ports:
+      - "3000:3000"
+    environment:
+      - NEXT_PUBLIC_API_URL=http://localhost:4000/api
+    depends_on:
+      - backend
+    networks:
+      - shop_network
+
+  db:
+    image: mysql:8.0
+    command: --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
+    container_name: shopgaran_mysql
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: popeyes_clone
+    ports:
+      # Ràng buộc cổng 3306 chỉ nhận kết nối từ localhost (127.0.0.1) trên máy host, chặn truy cập từ mạng ngoài
+      - "127.0.0.1:3306:3306"
+    volumes:
+      - ./database.sql:/docker-entrypoint-initdb.d/init.sql
+      - db_data:/var/lib/mysql
+    networks:
+      - shop_network
+
+networks:
+  shop_network:
+    driver: bridge
+
+volumes:
+  db_data:
