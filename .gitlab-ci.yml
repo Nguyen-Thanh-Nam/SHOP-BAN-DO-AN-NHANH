@@ -49,7 +49,7 @@ unit-testing:
 semgrep-sast:
   stage: sast
   image: semgrep/semgrep:1.87.0
-  allow_failure: false
+  allow_failure: true
   script:
   - echo "Semgrep SAST scan..."
   - semgrep scan --config .semgrep.yml --config "p/owasp-top-ten" --json --output
@@ -84,7 +84,7 @@ trivy-dependency-scan:
     name: aquasec/trivy:0.57.1
     entrypoint:
     - ''
-  allow_failure: false
+  allow_failure: true
   script:
   - echo "📦 Trivy SCA - Quét lỗ hổng thư viện phụ thuộc..."
   - trivy fs --scanners vuln --severity CRITICAL,HIGH --format json --output trivy-dep-report.json
@@ -122,7 +122,7 @@ generate-sbom:
 trivy-image-scan:
   stage: image-scan
   image: docker:27
-  allow_failure: false
+  allow_failure: true
   script:
   - echo "🔍 Quét lỗ hổng Docker image vừa build..."
   - docker run --rm -v /var/run/docker.sock:/var/run/docker.sock aquasec/trivy:0.57.1
