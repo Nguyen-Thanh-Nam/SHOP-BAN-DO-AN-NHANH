@@ -212,7 +212,7 @@ kyverno-verify:
   image: lachlanevenson/k8s-kubectl:latest
   allow_failure: true
   script:
-    - echo "🛡️ Kyverno verify: Xác thực chữ ký số của container image..."
+    - echo "Kyverno verify - Xac thuc chu ky so container image..."
     - kubectl get pods || true
 
 # ----------------------------------------------------------------
