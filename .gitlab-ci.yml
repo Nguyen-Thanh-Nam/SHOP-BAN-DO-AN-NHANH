@@ -26,7 +26,7 @@ variables:
 validate-dockerfiles:
   stage: validate
   image: hadolint/hadolint:latest-alpine
-  allow_failure: true
+  allow_failure: false
   script:
   - echo "🔍 Kiểm tra cú pháp và bảo mật Dockerfiles bằng Hadolint..."
   - hadolint backend/Dockerfile || true
@@ -38,7 +38,7 @@ validate-k8s-manifests:
     name: garethr/kubeval:latest
     entrypoint:
     - ''
-  allow_failure: true
+  allow_failure: false
   script:
   - echo "🔍 Kiểm tra cú pháp cấu hình Kubernetes (Kubeval)..."
   - kubeval --version || true
@@ -46,7 +46,7 @@ validate-k8s-manifests:
 unit-testing:
   stage: test
   image: node:20-alpine
-  allow_failure: true
+  allow_failure: false
   script:
   - echo "🧪 Chạy Unit Tests và Code Coverage..."
   - cd backend && npm install --silent && npm test || true
@@ -54,7 +54,7 @@ unit-testing:
 semgrep-sast:
   stage: sast
   image: semgrep/semgrep:1.87.0
-  allow_failure: true
+  allow_failure: false
   script:
   - echo "Semgrep SAST scan..."
   - semgrep scan --config .semgrep.yml --config "p/owasp-top-ten" --json --output
@@ -91,7 +91,7 @@ trivy-dependency-scan:
     name: aquasec/trivy:0.57.1
     entrypoint:
     - ''
-  allow_failure: true
+  allow_failure: false
   script:
   - echo "📦 Trivy SCA - Quét lỗ hổng thư viện phụ thuộc..."
   - trivy fs --scanners vuln --severity CRITICAL,HIGH --format json --output trivy-dep-report.json
@@ -118,7 +118,7 @@ build-docker-images:
 generate-sbom:
   stage: sbom
   image: node:20-alpine
-  allow_failure: true
+  allow_failure: false
   script:
   - echo "📋 Sinh SBOM dạng CycloneDX..."
   - npm install -g @cyclonedx/cdxgen@10.10.6 --silent
@@ -132,7 +132,7 @@ generate-sbom:
 trivy-image-scan:
   stage: image-scan
   image: docker:27
-  allow_failure: true
+  allow_failure: false
   script:
   - echo "🔍 Quét lỗ hổng Docker image vừa build..."
   - docker run --rm -v /var/run/docker.sock:/var/run/docker.sock aquasec/trivy:0.57.1
@@ -141,7 +141,7 @@ trivy-image-scan:
 cosign-sign-image:
   stage: sign
   image: docker:27
-  allow_failure: true
+  allow_failure: false
   before_script:
   - apk add --no-cache curl
   - curl -sSfL "https://github.com/sigstore/cosign/releases/download/v2.4.1/cosign-linux-amd64"
@@ -164,7 +164,7 @@ push-to-registry:
 k8s-deploy:
   stage: deploy
   image: lachlanevenson/k8s-kubectl:latest
-  allow_failure: true
+  allow_failure: false
   script:
   - echo "☸️ Triển khai ứng dụng lên Kubernetes cluster..."
   - kubectl get nodes || echo "Môi trường lab Kuberenetes chạy cục bộ"
@@ -172,7 +172,7 @@ k8s-deploy:
 kyverno-verify:
   stage: verify
   image: lachlanevenson/k8s-kubectl:latest
-  allow_failure: true
+  allow_failure: false
   script:
   - echo "Kyverno verify - Xac thuc chu ky so container image..."
   - kubectl get pods || true
@@ -180,7 +180,7 @@ kyverno-verify:
 owasp-zap-dynamic-analysis:
   stage: dynamic-analysis
   image: owasp/zap2docker-stable:latest
-  allow_failure: true
+  allow_failure: false
   script:
   - echo "⚡ OWASP ZAP dynamic-analysis - Quét lỗ hổng động..."
   - zap-baseline.py -t http://localhost:3000 -r zap-report.html || true
@@ -193,7 +193,7 @@ owasp-zap-dynamic-analysis:
 falco-runtime-check:
   stage: runtime
   image: alpine:latest
-  allow_failure: true
+  allow_failure: false
   script:
   - echo "👁️ Falco Runtime Security - Giám sát bảo mật runtime container..."
   - echo "Thu thập runtime security alerts..."
