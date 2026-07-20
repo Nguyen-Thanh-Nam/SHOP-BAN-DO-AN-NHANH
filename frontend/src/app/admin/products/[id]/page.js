@@ -63,7 +63,7 @@ export default function ProductFormPage() {
                     });
                     if (product.image) {
                         const imgUrl = product.image.startsWith("/uploads")
-                            ? `${process.env.NEXT_PUBLIC_API_URL.replace(
+                            ? `${(process.env.NEXT_PUBLIC_API_URL || "").replace(
                                   "/api",
                                   ""
                               )}${product.image}`

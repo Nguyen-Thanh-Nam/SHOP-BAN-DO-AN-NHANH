@@ -14,6 +14,7 @@ stages:
 - dynamic-analysis
 - runtime
 - report
+
 variables:
   BACKEND_IMAGE: $CI_REGISTRY_IMAGE/backend:$CI_COMMIT_SHORT_SHA
   FRONTEND_IMAGE: $CI_REGISTRY_IMAGE/frontend:$CI_COMMIT_SHORT_SHA
@@ -21,6 +22,7 @@ variables:
   TRIVY_CACHE_DIR: .trivy-cache
   DOCKER_HOST: unix:///var/run/docker.sock
   NEXT_TELEMETRY_DISABLED: '1'
+
 validate-dockerfiles:
   stage: validate
   image: hadolint/hadolint:latest-alpine
@@ -29,6 +31,7 @@ validate-dockerfiles:
   - echo "🔍 Kiểm tra cú pháp và bảo mật Dockerfiles bằng Hadolint..."
   - hadolint backend/Dockerfile || true
   - hadolint frontend/Dockerfile || true
+
 validate-k8s-manifests:
   stage: validate
   image:
@@ -39,6 +42,7 @@ validate-k8s-manifests:
   script:
   - echo "🔍 Kiểm tra cú pháp cấu hình Kubernetes (Kubeval)..."
   - kubeval --version || true
+
 unit-testing:
   stage: test
   image: node:20-alpine
@@ -46,6 +50,7 @@ unit-testing:
   script:
   - echo "🧪 Chạy Unit Tests và Code Coverage..."
   - cd backend && npm install --silent && npm test || true
+
 semgrep-sast:
   stage: sast
   image: semgrep/semgrep:1.87.0
@@ -61,6 +66,7 @@ semgrep-sast:
     when: always
     paths:
     - semgrep-report.json
+
 gitleaks-secret-scan:
   stage: secret-scan
   image:
@@ -78,6 +84,7 @@ gitleaks-secret-scan:
     when: always
     paths:
     - gitleaks-report.json
+
 trivy-dependency-scan:
   stage: dependency-scan
   image:
@@ -94,6 +101,7 @@ trivy-dependency-scan:
     when: always
     paths:
     - trivy-dep-report.json
+
 build-docker-images:
   stage: build
   image: docker:27
@@ -106,6 +114,7 @@ build-docker-images:
   - docker build --tag "$FRONTEND_IMAGE" ./frontend/
   - docker push "$BACKEND_IMAGE"
   - docker push "$FRONTEND_IMAGE"
+
 generate-sbom:
   stage: sbom
   image: node:20-alpine
@@ -119,6 +128,7 @@ generate-sbom:
     name: sbom-$CI_COMMIT_SHORT_SHA
     paths:
     - sbom-backend.json
+
 trivy-image-scan:
   stage: image-scan
   image: docker:27
@@ -127,6 +137,7 @@ trivy-image-scan:
   - echo "🔍 Quét lỗ hổng Docker image vừa build..."
   - docker run --rm -v /var/run/docker.sock:/var/run/docker.sock aquasec/trivy:0.57.1
     image --exit-code 1 --severity CRITICAL --quiet "$BACKEND_IMAGE"
+
 cosign-sign-image:
   stage: sign
   image: docker:27
@@ -140,6 +151,7 @@ cosign-sign-image:
   - echo "🔏 Ký Docker Image sử dụng Cosign..."
   - docker login -u "$CI_REGISTRY_USER" -p "$CI_REGISTRY_PASSWORD" "$CI_REGISTRY"
   - COSIGN_EXPERIMENTAL=1 cosign sign --yes "$BACKEND_IMAGE"
+
 push-to-registry:
   stage: push
   image: docker:27
@@ -148,6 +160,7 @@ push-to-registry:
   - docker login -u "$CI_REGISTRY_USER" -p "$CI_REGISTRY_PASSWORD" "$CI_REGISTRY"
   - docker tag "$BACKEND_IMAGE" "$CI_REGISTRY_IMAGE/backend:latest"
   - docker push "$CI_REGISTRY_IMAGE/backend:latest"
+
 k8s-deploy:
   stage: deploy
   image: lachlanevenson/k8s-kubectl:latest
@@ -155,6 +168,7 @@ k8s-deploy:
   script:
   - echo "☸️ Triển khai ứng dụng lên Kubernetes cluster..."
   - kubectl get nodes || echo "Môi trường lab Kuberenetes chạy cục bộ"
+
 kyverno-verify:
   stage: verify
   image: lachlanevenson/k8s-kubectl:latest
@@ -162,6 +176,7 @@ kyverno-verify:
   script:
   - echo "Kyverno verify - Xac thuc chu ky so container image..."
   - kubectl get pods || true
+
 owasp-zap-dynamic-analysis:
   stage: dynamic-analysis
   image: owasp/zap2docker-stable:latest
@@ -174,6 +189,7 @@ owasp-zap-dynamic-analysis:
     when: always
     paths:
     - zap-report.html
+
 falco-runtime-check:
   stage: runtime
   image: alpine:latest
@@ -181,6 +197,7 @@ falco-runtime-check:
   script:
   - echo "👁️ Falco Runtime Security - Giám sát bảo mật runtime container..."
   - echo "Thu thập runtime security alerts..."
+
 generate-sec-report:
   stage: report
   image: alpine:latest

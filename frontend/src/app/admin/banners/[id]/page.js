@@ -69,7 +69,7 @@ export default function BannerFormPage() {
 
     const getImageUrl = (path) =>
         path?.startsWith("/uploads")
-            ? `${process.env.NEXT_PUBLIC_API_URL.replace("/api", "")}${path}`
+            ? `${(process.env.NEXT_PUBLIC_API_URL || "").replace("/api", "")}${path}`
             : path;
 
     const handleSubmit = async (e) => {

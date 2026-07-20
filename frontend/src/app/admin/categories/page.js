@@ -70,7 +70,7 @@ export default function CategoryManagementPage() {
     const getImageUrl = (path) => {
         if (!path) return "https://placehold.co/100?text=No+Img";
         return path.startsWith("/uploads")
-            ? `${process.env.NEXT_PUBLIC_API_URL.replace("/api", "")}${path}`
+            ? `${(process.env.NEXT_PUBLIC_API_URL || "").replace("/api", "")}${path}`
             : path;
     };
 

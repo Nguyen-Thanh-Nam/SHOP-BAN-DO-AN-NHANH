@@ -8,7 +8,7 @@ const getImageUrl = (path) => {
         return "https://api.popeyes.vn/api/v1/files/06012023_150400_ud.png";
     return path.startsWith("http")
         ? path
-        : `${process.env.NEXT_PUBLIC_API_URL.replace("/api", "")}${path}`;
+        : `${(process.env.NEXT_PUBLIC_API_URL || "").replace("/api", "")}${path}`;
 };
 
 function ColorIcon({ src, active, className = "" }) {

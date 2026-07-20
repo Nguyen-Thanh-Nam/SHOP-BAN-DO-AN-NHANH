@@ -76,7 +76,7 @@ export default function PromotionFormPage() {
 
                         if (promo.image) {
                             const imgUrl = promo.image.startsWith("/uploads")
-                                ? `${process.env.NEXT_PUBLIC_API_URL.replace(
+                                ? `${(process.env.NEXT_PUBLIC_API_URL || "").replace(
                                       "/api",
                                       ""
                                   )}${promo.image}`
