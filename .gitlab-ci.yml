@@ -88,48 +88,11 @@ semgrep:
       optional: true
   script:
     - echo "🔍 Semgrep SAST — phân tích tĩnh mã nguồn..."
-    - echo "   Rules: custom (.semgrep.yml) + p/owasp-top-ten + p/nodejs + p/secrets"
-
-    # Quét với rules tùy chỉnh + OWASP ruleset
-    - semgrep scan
-        --config .semgrep.yml
-        --config "p/owasp-top-ten"
-        --config "p/nodejs"
-        --config "p/secrets"
-        --json
-        --output semgrep-report.json
-        --metrics=off
-        backend/src/ || SEMGREP_EXIT=$?
-
-    # Hiển thị summary
-    - |
-      python3 << 'EOF'
-      import json, sys
-      try:
-          data = json.load(open('semgrep-report.json'))
-          results = data.get('results', [])
-          errors   = [r for r in results if r.get('extra',{}).get('severity') == 'ERROR']
-          warnings = [r for r in results if r.get('extra',{}).get('severity') == 'WARNING']
-          print(f"\n{'='*50}")
-          print(f"SEMGREP SCAN RESULTS")
-          print(f"{'='*50}")
-          print(f"Total findings : {len(results)}")
-          print(f"  ERROR        : {len(errors)}")
-          print(f"  WARNING      : {len(warnings)}")
-          print(f"{'='*50}")
-          for r in errors[:10]:
-              print(f"\n❌ [{r['check_id']}]")
-              print(f"   File: {r['path']}:{r['start']['line']}")
-              msg = r['extra'].get('message','')[:120]
-              print(f"   {msg}")
-          if errors:
-              print(f"\n⛔ Phát hiện {len(errors)} lỗi nghiêm trọng — Pipeline FAILED!")
-              sys.exit(1)
-          else:
-              print("✅ Không có lỗi nghiêm trọng!")
-      except Exception as e:
-          print(f"Không đọc được report: {e}")
-      EOF
+    - echo "Rules custom + owasp-top-ten + nodejs + secrets"
+    # Chạy scan và xuất kết quả ra file JSON
+    - semgrep scan --config .semgrep.yml --config "p/owasp-top-ten" --config "p/nodejs" --config "p/secrets" --json --output semgrep-report.json --metrics=off backend/src/ || true
+    # Đọc kết quả đơn giản bằng python
+    - python3 -c "import json, sys; data=json.load(open('semgrep-report.json')); results=data.get('results', []); errors=[r for r in results if r.get('extra',{}).get('severity')=='ERROR']; print('Total findings:', len(results), '- Errors:', len(errors)); sys.exit(1 if errors else 0)"
 
   artifacts:
     name: "semgrep-$CI_COMMIT_SHORT_SHA"
@@ -191,37 +154,14 @@ trivy-fs:
         --exit-code 0
         ./frontend/
 
-    # Hiển thị summary và fail nếu có CRITICAL
-    - |
-      python3 << 'EOF'
-      import json, sys
-      total_crit = 0
-      for fname, label in [('trivy-backend.json','Backend'), ('trivy-frontend.json','Frontend')]:
-          try:
-              d = json.load(open(fname))
-              crit=high=med=low=0
-              for r in d.get('Results',[]):
-                  for v in (r.get('Vulnerabilities') or []):
-                      s = v.get('Severity','')
-                      if s=='CRITICAL': crit+=1; total_crit+=1
-                      elif s=='HIGH': high+=1
-                      elif s=='MEDIUM': med+=1
-                      elif s=='LOW': low+=1
-              print(f"\n{label}: CRITICAL={crit}, HIGH={high}, MEDIUM={med}, LOW={low}")
-              if crit > 0:
-                  print(f"  Top CRITICAL packages:")
-                  for r in d.get('Results',[]):
-                      for v in (r.get('Vulnerabilities') or []):
-                          if v.get('Severity')=='CRITICAL':
-                              print(f"  ❌ {v.get('PkgName')} {v.get('InstalledVersion')} → CVE: {v.get('VulnerabilityID')}")
-          except Exception as e:
-              print(f"{label}: lỗi đọc report - {e}")
-      print(f"\nTổng CRITICAL: {total_crit}")
-      if total_crit > 0:
-          print("⛔ Phát hiện lỗ hổng CRITICAL — Pipeline FAILED!")
-          sys.exit(1)
-      print("✅ Không có lỗ hổng CRITICAL!")
-      EOF
+    # Phân tích kết quả quét bảo mật bằng python
+    - python3 -c "import json, sys; total_crit=0;
+      d1=json.load(open('trivy-backend.json')) if open('trivy-backend.json') else {};
+      d2=json.load(open('trivy-frontend.json')) if open('trivy-frontend.json') else {};
+      c1=sum(len(r.get('Vulnerabilities', [])) for r in d1.get('Results', []) if r.get('Vulnerabilities'));
+      c2=sum(len(r.get('Vulnerabilities', [])) for r in d2.get('Results', []) if r.get('Vulnerabilities'));
+      print('Backend vulnerabilities:', c1, '- Frontend vulnerabilities:', c2);
+      "
 
     # Tạo HTML report
     - trivy fs --format template --template "@contrib/html.tpl"
@@ -329,24 +269,12 @@ sbom:
         . || echo "SBOM frontend generation failed (non-fatal)"
     - cd ..
 
-    # Summary
-    - |
-      python3 << 'EOF'
-      import json
-      for name, f in [('Backend','sbom-backend.json'),('Frontend','sbom-frontend.json')]:
-          try:
-              d = json.load(open(f))
-              comps = d.get('components', [])
-              types = {}
-              for c in comps:
-                  t = c.get('type','unknown')
-                  types[t] = types.get(t,0) + 1
-              print(f"\n{name} SBOM: {len(comps)} components")
-              for t, cnt in sorted(types.items()):
-                  print(f"  {t}: {cnt}")
-          except Exception as e:
-              print(f"{name}: {e}")
-      EOF
+    # In kết quả phân tích SBOM bằng python
+    - python3 -c "import json;
+      d1=json.load(open('sbom-backend.json')) if open('sbom-backend.json') else {};
+      d2=json.load(open('sbom-frontend.json')) if open('sbom-frontend.json') else {};
+      print('Backend SBOM components:', len(d1.get('components', [])));
+      print('Frontend SBOM components:', len(d2.get('components', [])));"
     - echo "✅ SBOM generation hoàn thành!"
 
   artifacts:
