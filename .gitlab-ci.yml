@@ -314,28 +314,11 @@ build-scan-backend:
         --label "pipeline.id=$CI_PIPELINE_ID"
         ./backend/
 
-    - echo "🔍 Trivy scan Docker image..."
-    - docker run --rm
-        -v /var/run/docker.sock:/var/run/docker.sock
-        -v "$CI_PROJECT_DIR/.trivy-cache:/root/.cache/"
-        aquasec/trivy:0.57.1
-        image
-        --exit-code 0
-        --severity CRITICAL,HIGH
-        --format json
-        --output /tmp/trivy-image-backend.json
-        "$BACKEND_IMAGE" || true
+    # Quét bảo mật ảnh docker bằng trivy
+    - docker run --rm -v /var/run/docker.sock:/var/run/docker.sock -v "$CI_PROJECT_DIR/.trivy-cache:/root/.cache/" aquasec/trivy:0.57.1 image --exit-code 0 --severity CRITICAL,HIGH --format json --output /tmp/trivy-image-backend.json "$BACKEND_IMAGE" || true
     - cp /tmp/trivy-image-backend.json trivy-image-backend.json 2>/dev/null || echo '{}' > trivy-image-backend.json
-
-    # Fail chỉ khi có CRITICAL
-    - docker run --rm
-        -v /var/run/docker.sock:/var/run/docker.sock
-        aquasec/trivy:0.57.1
-        image
-        --exit-code 1
-        --severity CRITICAL
-        --quiet
-        "$BACKEND_IMAGE"
+    # Chạy kiểm tra bắt buộc lỗi CRITICAL để chặn pipeline
+    - docker run --rm -v /var/run/docker.sock:/var/run/docker.sock aquasec/trivy:0.57.1 image --exit-code 1 --severity CRITICAL --quiet "$BACKEND_IMAGE"
 
     # Push image lên GitLab Registry
     - docker push "$BACKEND_IMAGE"
@@ -371,15 +354,8 @@ build-scan-frontend:
         --build-arg NEXT_PUBLIC_API_URL="http://localhost:4000/api"
         ./frontend/
 
-    # Trivy scan
-    - docker run --rm
-        -v /var/run/docker.sock:/var/run/docker.sock
-        aquasec/trivy:0.57.1
-        image
-        --exit-code 1
-        --severity CRITICAL
-        --quiet
-        "$FRONTEND_IMAGE"
+    # Chạy quét bảo mật ảnh docker bằng trivy
+    - docker run --rm -v /var/run/docker.sock:/var/run/docker.sock aquasec/trivy:0.57.1 image --exit-code 1 --severity CRITICAL --quiet "$FRONTEND_IMAGE"
 
     - docker push "$FRONTEND_IMAGE"
     - echo "✅ Frontend image pushed: $FRONTEND_IMAGE"
@@ -406,36 +382,13 @@ cosign-sign:
     - docker login -u "$CI_REGISTRY_USER" -p "$CI_REGISTRY_PASSWORD" "$CI_REGISTRY"
   script:
     - echo "🔏 Cosign — ký Docker image với Sigstore keyless..."
-
-    # Keyless signing sử dụng GitLab OIDC token
-    - COSIGN_EXPERIMENTAL=1 cosign sign
-        --yes
-        --annotations "git.commit=$CI_COMMIT_SHA"
-        --annotations "git.branch=$CI_COMMIT_REF_NAME"
-        --annotations "pipeline=$CI_PIPELINE_ID"
-        --annotations "signer=gitlab-ci/cosign"
-        "$BACKEND_IMAGE"
-
-    # Verify chữ ký
+    # Ký bằng OIDC token
+    - COSIGN_EXPERIMENTAL=1 cosign sign --yes --annotations "git.commit=$CI_COMMIT_SHA" --annotations "git.branch=$CI_COMMIT_REF_NAME" --annotations "pipeline=$CI_PIPELINE_ID" --annotations "signer=gitlab-ci/cosign" "$BACKEND_IMAGE"
+    # Xác thực lại
     - echo "✅ Verify chữ ký..."
-    - COSIGN_EXPERIMENTAL=1 cosign verify
-        --certificate-identity-regexp ".*"
-        --certificate-oidc-issuer "https://gitlab.com"
-        "$BACKEND_IMAGE" | head -5
-
-    # Lưu signing info
-    - |
-      cat > signing-info.json << EOF
-      {
-        "image":    "$BACKEND_IMAGE",
-        "signed":   true,
-        "commit":   "$CI_COMMIT_SHA",
-        "branch":   "$CI_COMMIT_REF_NAME",
-        "pipeline": "$CI_PIPELINE_ID",
-        "time":     "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
-        "tool":     "Cosign v2.4.1 / Sigstore"
-      }
-      EOF
+    - COSIGN_EXPERIMENTAL=1 cosign verify --certificate-identity-regexp ".*" --certificate-oidc-issuer "https://gitlab.com" "$BACKEND_IMAGE"
+    # Xuất thông tin
+    - echo '{"image":"'"$BACKEND_IMAGE"'", "signed":true, "pipeline":"'"$CI_PIPELINE_ID"'"}' > signing-info.json
     - cat signing-info.json
     - echo "🎉 Image đã được ký và ghi vào Rekor transparency log!"
 
@@ -469,28 +422,12 @@ pipeline-summary:
     - job: sbom
       optional: true
   script:
-    - |
-      echo "════════════════════════════════════════════════"
-      echo "     SECURITY PIPELINE SUMMARY"
-      echo "════════════════════════════════════════════════"
-      echo "  Project  : $CI_PROJECT_NAME"
-      echo "  Branch   : $CI_COMMIT_REF_NAME"
-      echo "  Commit   : $CI_COMMIT_SHORT_SHA"
-      echo "  Author   : $CI_COMMIT_AUTHOR"
-      echo "  Pipeline : #$CI_PIPELINE_ID"
-      echo "  URL      : $CI_PIPELINE_URL"
-      echo "════════════════════════════════════════════════"
-      echo "  Artifacts generated:"
-      echo "    📄 gitleaks-report.json"
-      echo "    📄 semgrep-report.json"
-      echo "    📄 trivy-backend.json / trivy-frontend.json"
-      echo "    📄 trivy-backend.html / trivy-frontend.html"
-      echo "    📄 npm-audit-backend.json / frontend.json"
-      echo "    📄 sbom-backend.json / sbom-frontend.json (CycloneDX)"
-      echo "════════════════════════════════════════════════"
-      echo "  View Security Dashboard:"
-      echo "  $CI_PROJECT_URL/-/security/vulnerability-report"
-      echo "════════════════════════════════════════════════"
+    - echo "=================================================="
+    - echo "SECURITY PIPELINE SUMMARY"
+    - echo "Project:$CI_PROJECT_NAME - Branch:$CI_COMMIT_REF_NAME"
+    - echo "Commit:$CI_COMMIT_SHORT_SHA - Pipeline:#$CI_PIPELINE_ID"
+    - echo "Artifacts:Gitleaks, Semgrep, Trivy, SBOM, Signing"
+    - echo "=================================================="
   rules:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
     - if: '$CI_COMMIT_BRANCH == "main"'
