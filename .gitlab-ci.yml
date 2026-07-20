@@ -11,7 +11,7 @@ stages:
 - push
 - deploy
 - verify
-- dast
+- dynamic-analysis
 - runtime
 - report
 variables:
@@ -162,12 +162,12 @@ kyverno-verify:
   script:
   - echo "Kyverno verify - Xac thuc chu ky so container image..."
   - kubectl get pods || true
-owasp-zap-dast:
-  stage: dast
+owasp-zap-dynamic-analysis:
+  stage: dynamic-analysis
   image: owasp/zap2docker-stable:latest
   allow_failure: true
   script:
-  - echo "⚡ OWASP ZAP DAST - Quét lỗ hổng động..."
+  - echo "⚡ OWASP ZAP dynamic-analysis - Quét lỗ hổng động..."
   - zap-baseline.py -t http://localhost:3000 -r zap-report.html || true
   artifacts:
     name: zap-report-$CI_COMMIT_SHORT_SHA
