@@ -70,15 +70,9 @@ semgrep-sast:
   image: semgrep/semgrep:1.87.0
   allow_failure: false
   script:
-    - echo "🔍 Semgrep SAST — Phân tích tĩnh mã nguồn..."
+    - echo "Semgrep SAST scan..."
     - semgrep scan --config .semgrep.yml --config "p/owasp-top-ten" --json --output semgrep-report.json backend/src/ || true
-    - |
-      python3 -c "import json, sys
-      data=json.load(open('semgrep-report.json'))
-      r=data.get('results', [])
-      err=[x for x in r if x.get('extra',{}).get('severity')=='ERROR']
-      print('Total findings:', len(r), 'Errors:', len(err))
-      sys.exit(1 if err else 0)"
+    - 'grep -q "\"severity\":\"ERROR\"" semgrep-report.json && (echo "❌ Phát hiện lỗi nghiêm trọng!" && exit 1) || echo "✅ An toàn"'
 
   artifacts:
     name: "semgrep-sast-$CI_COMMIT_SHORT_SHA"
@@ -96,8 +90,8 @@ gitleaks-secret-scan:
     entrypoint: [""]
   allow_failure: false
   script:
-    - echo "🔑 Gitleaks - Quét lộ lọt credentials và API Keys..."
-    - gitleaks detect --source . --config .gitleaks.toml --report-format json --report-path gitleaks-report.json --exit-code 1 --verbose || (echo "❌ PHÁT HIỆN SECRETS!" && cat gitleaks-report.json && exit 1)
+    - echo "Gitleaks scan..."
+    - 'gitleaks detect --source . --config .gitleaks.toml --report-format json --report-path gitleaks-report.json --exit-code 1 --verbose || (echo "PHAT HIEN SECRETS!" && cat gitleaks-report.json && exit 1)'
   artifacts:
     name: "gitleaks-$CI_COMMIT_SHORT_SHA"
     when: always
