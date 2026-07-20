@@ -1,0 +1,94 @@
+# Gitleaks Configuration
+# ========================
+# Cấu hình tùy chỉnh cho dự án SHOP-BAN-DO-AN-NHANH
+# Phát hiện: API keys, JWT secrets, database passwords, email credentials
+# Tài liệu: https://github.com/gitleaks/gitleaks
+
+title = "Gitleaks Config - SHOP-BAN-DO-AN-NHANH"
+
+[extend]
+# Sử dụng ruleset mặc định của Gitleaks làm nền tảng
+useDefault = true
+
+# ============================================================
+# Rules tùy chỉnh cho dự án
+# ============================================================
+
+[[rules]]
+id = "nodejs-jwt-secret"
+description = "JWT Secret key hardcoded trong source code"
+regex = '''(?i)(jwt[_\-]?secret|access[_\-]?token[_\-]?secret|refresh[_\-]?token[_\-]?secret)\s*[=:]\s*['"]([^'"]{4,})['"]'''
+tags = ["jwt", "secret", "nodejs"]
+severity = "critical"
+
+[[rules]]
+id = "mysql-connection-string"
+description = "MySQL connection string với credentials"
+regex = '''mysql://[a-zA-Z0-9_]+:[^@\s]+@'''
+tags = ["mysql", "database", "credentials"]
+severity = "high"
+
+[[rules]]
+id = "nodejs-db-password"
+description = "Database password hardcoded"
+regex = '''(?i)(db[_\-]?password|mysql[_\-]?pass|database[_\-]?password)\s*[=:]\s*['"]([^'"]{3,})['"]'''
+tags = ["database", "password"]
+severity = "high"
+
+[[rules]]
+id = "nodemailer-credentials"
+description = "Email credentials (SMTP) hardcoded"
+regex = '''(?i)(mail[_\-]?pass|smtp[_\-]?pass|email[_\-]?password)\s*[=:]\s*['"]([^'"]{8,})['"]'''
+tags = ["email", "smtp", "credentials"]
+severity = "high"
+
+[[rules]]
+id = "sepay-api-key"
+description = "SePay Payment API Key"
+regex = '''(?i)(sepay[_\-]?api[_\-]?key|sep[_\-]?key)\s*[=:]\s*['"]([A-Za-z0-9_\-]{16,})['"]'''
+tags = ["payment", "api-key", "sepay"]
+severity = "critical"
+
+[[rules]]
+id = "hardcoded-private-key"
+description = "Private key (RSA/EC) hardcoded trong code"
+regex = '''-----BEGIN (RSA |EC |OPENSSH )?PRIVATE KEY-----'''
+tags = ["private-key", "cryptography"]
+severity = "critical"
+
+[[rules]]
+id = "weak-jwt-secret"
+description = "JWT secret quá ngắn hoặc dễ đoán"
+regex = '''(?i)(jwt[_\-]?secret|token[_\-]?secret)\s*[=:]\s*['"]([a-zA-Z0-9_]{1,20})['"]'''
+tags = ["jwt", "weak-secret"]
+severity = "medium"
+
+# ============================================================
+# Allowlist — loại trừ các file test và demo
+# ============================================================
+[allowlist]
+description = "Allowlist cho files demo và test"
+
+# Cho phép các file trong thư mục vulnerable/ (là demo có chủ ý)
+paths = [
+  '''backend/src/vulnerable/.*''',
+  '''.*\.test\.js$''',
+  '''.*\.spec\.js$''',
+  '''.*\.md$''',
+  '''security-dashboard/data/.*'''
+]
+
+# Loại trừ các patterns thường là placeholder
+regexes = [
+  '''YOUR_.*_KEY''',
+  '''EXAMPLE.*''',
+  '''<your_.*>''',
+  '''placeholder'''
+]
+
+# ============================================================
+# Cấu hình quét
+# ============================================================
+[detect]
+# Quét cả git history (không chỉ working directory)
+gitScan = true

@@ -1,0 +1,82 @@
+# Backend .dockerignore
+# Loại trừ các file không cần thiết/nhạy cảm khỏi Docker build context
+
+# ============================
+# Secrets & Config
+# ============================
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.cert
+*.crt
+cosign.key
+cosign.pub
+
+# ============================
+# Development files
+# ============================
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.npm/
+.yarn/
+
+# ============================
+# Sensitive data
+# ============================
+uploads/
+*.sql
+*.dump
+*.bak
+
+# ============================
+# Git & CI
+# ============================
+.git/
+.gitignore
+.gitlab-ci.yml
+.github/
+
+# ============================
+# Security tools output
+# ============================
+*-report.json
+*-report.sarif
+*-report.html
+sbom-*.json
+gitleaks-report.*
+
+# ============================
+# Documentation
+# ============================
+*.md
+LICENSE
+CHANGELOG
+docs/
+
+# ============================
+# IDE & OS
+# ============================
+.vscode/
+.idea/
+*.DS_Store
+Thumbs.db
+.editorconfig
+
+# ============================
+# Testing
+# ============================
+__tests__/
+*.test.js
+*.spec.js
+coverage/
+.nyc_output/
+jest.config.*
+
+# ============================
+# Vulnerable demo (không đưa vào production)
+# ============================
+src/vulnerable/

@@ -1,0 +1,62 @@
+# Trivy Configuration
+# ====================
+# Cấu hình cho Trivy vulnerability scanner
+# Tài liệu: https://aquasecurity.github.io/trivy/
+
+# Severity levels cần báo cáo
+severity:
+  - CRITICAL
+  - HIGH
+  - MEDIUM
+  - LOW
+
+# Exit code khi phát hiện lỗ hổng (dùng cho CI/CD)
+# exit-code: 1 khi có CRITICAL/HIGH — block pipeline
+exit-code: 1
+
+# Loại scanner kích hoạt
+scanners:
+  - vuln       # Quét CVE vulnerabilities
+  - secret     # Quét secrets/credentials
+  - config     # Quét misconfigurations (Dockerfile, docker-compose)
+  - license    # Quét license compliance
+
+# Timeout cho mỗi lần quét
+timeout: 10m
+
+# Output format
+format: json
+
+# Bỏ qua các lỗ hổng chưa có bản vá (unfixed)
+ignore-unfixed: false
+
+# Cache directory
+cache:
+  dir: /tmp/trivy-cache
+
+# Vulnerability database
+db:
+  # Cập nhật DB trước mỗi lần quét
+  skip-update: false
+  # Java DB cho quét JAR files
+  java-db-skip-update: false
+
+# Vulnerability filters
+vulnerability:
+  # Chỉ báo cáo lỗ hổng có NVD score >= 4.0
+  ignore-status:
+    - will_not_fix
+    - end_of_life
+
+# Secret scanning config
+secret:
+  # Config file cho custom patterns
+  # config: trivy-secret.yaml
+
+# Ignore file — tương tự .trivyignore
+ignore-file: .trivyignore
+
+# ============================================================
+# Ignore list — CVEs được chấp nhận (false positives / known issues)
+# ============================================================
+# Thêm CVE IDs vào file .trivyignore thay vì ở đây

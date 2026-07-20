@@ -1,0 +1,242 @@
+# Semgrep Rules Configuration
+# =============================
+# Rules tùy chỉnh cho dự án SHOP-BAN-DO-AN-NHANH (Express.js + Node.js)
+# Tập trung vào: OWASP Top 10 2021, SQL Injection, XSS, Path Traversal
+# Tài liệu: https://semgrep.dev/docs/
+
+rules:
+  # ============================================================
+  # OWASP A03:2021 - Injection (SQL Injection)
+  # ============================================================
+
+  - id: sql-injection-string-concat
+    languages: [javascript]
+    message: |
+      SQL Injection: Query được xây dựng bằng nối chuỗi với input từ người dùng.
+      Attacker có thể chèn SQL code để dump database, bypass xác thực, hoặc xóa dữ liệu.
+      FIX: Sử dụng parameterized queries (prepared statements): db.query('SELECT * FROM users WHERE id = ?', [userId])
+    severity: ERROR
+    metadata:
+      cwe: "CWE-89"
+      owasp: "A03:2021"
+      confidence: HIGH
+    patterns:
+      - pattern-either:
+          # Pattern 1: Template literal với req.params/query/body
+          - pattern: |
+              `SELECT ... ${$REQ.params.$X} ...`
+          - pattern: |
+              `SELECT ... ${$REQ.query.$X} ...`
+          - pattern: |
+              `SELECT ... ${$REQ.body.$X} ...`
+          - pattern: |
+              `INSERT ... ${$REQ.body.$X} ...`
+          - pattern: |
+              `UPDATE ... ${$REQ.body.$X} ...`
+          - pattern: |
+              `DELETE ... ${$REQ.params.$X} ...`
+          # Pattern 2: Nối chuỗi với +
+          - pattern: |
+              "SELECT" + ... + $REQ.query.$X
+          - pattern: |
+              "SELECT" + ... + $REQ.params.$X
+          - pattern: |
+              "SELECT" + ... + $REQ.body.$X
+
+  - id: sql-injection-format-string
+    languages: [javascript]
+    message: |
+      SQL Injection: Sử dụng string formatting để xây dựng query.
+      FIX: Dùng parameterized queries với mysql2: db.query(sql, [params])
+    severity: ERROR
+    metadata:
+      cwe: "CWE-89"
+      owasp: "A03:2021"
+    pattern: |
+      db.query(`... ${...} ...`)
+
+  # ============================================================
+  # OWASP A01:2021 - Broken Access Control (Path Traversal)
+  # ============================================================
+
+  - id: path-traversal-req-param
+    languages: [javascript]
+    message: |
+      Path Traversal: Sử dụng input từ người dùng trực tiếp trong đường dẫn file.
+      Attacker có thể nhập ../../etc/passwd để đọc file ngoài phạm vi cho phép.
+      FIX: Dùng path.basename() và kiểm tra path không vượt ra ngoài thư mục gốc.
+    severity: ERROR
+    metadata:
+      cwe: "CWE-22"
+      owasp: "A01:2021"
+    patterns:
+      - pattern-either:
+          - pattern: fs.readFile($REQ.params.$X, ...)
+          - pattern: fs.readFileSync($REQ.params.$X, ...)
+          - pattern: |
+              $PATH = "./..." + $REQ.params.$X
+              ...
+              fs.readFile($PATH, ...)
+          - pattern: |
+              $PATH = "./..." + $REQ.query.$X
+              ...
+              fs.readFile($PATH, ...)
+
+  # ============================================================
+  # OWASP A03:2021 - Command Injection
+  # ============================================================
+
+  - id: command-injection-exec
+    languages: [javascript]
+    message: |
+      Command Injection: Thực thi shell command với input từ người dùng.
+      Attacker có thể nhập: malicious; rm -rf / để thực thi lệnh tùy ý.
+      FIX: Tránh dùng exec() với input người dùng. Nếu cần, dùng execFile() với args array.
+    severity: ERROR
+    metadata:
+      cwe: "CWE-78"
+      owasp: "A03:2021"
+    patterns:
+      - pattern-either:
+          - pattern: exec(`... ${$REQ.query.$X} ...`)
+          - pattern: exec(`... ${$REQ.params.$X} ...`)
+          - pattern: exec(`... ${$REQ.body.$X} ...`)
+          - pattern: execSync(`... ${$REQ.query.$X} ...`)
+          - pattern: |
+              $CMD = "..." + $REQ.query.$X
+              ...
+              exec($CMD, ...)
+
+  # ============================================================
+  # OWASP A02:2021 - Cryptographic Failures
+  # ============================================================
+
+  - id: weak-hash-md5
+    languages: [javascript]
+    message: |
+      Weak Cryptography: MD5 không an toàn cho mục đích bảo mật (đặc biệt là password hashing).
+      MD5 có thể bị crack bằng rainbow tables trong vài giây.
+      FIX: Dùng bcrypt, scrypt, hoặc argon2 cho password hashing.
+    severity: WARNING
+    metadata:
+      cwe: "CWE-327"
+      owasp: "A02:2021"
+    pattern: crypto.createHash('md5')
+
+  - id: weak-hash-sha1
+    languages: [javascript]
+    message: |
+      Weak Cryptography: SHA-1 đã bị deprecated và không an toàn cho password hashing.
+      FIX: Dùng SHA-256 trở lên, hoặc bcrypt cho password.
+    severity: WARNING
+    metadata:
+      cwe: "CWE-327"
+      owasp: "A02:2021"
+    pattern: crypto.createHash('sha1')
+
+  - id: hardcoded-jwt-secret
+    languages: [javascript]
+    message: |
+      Hardcoded Secret: JWT secret được hardcode trong source code.
+      Secret quá ngắn hoặc đoán được sẽ cho phép attacker forge JWT tokens.
+      FIX: Đọc secret từ process.env, và dùng secret ngẫu nhiên 256-bit trở lên.
+    severity: ERROR
+    metadata:
+      cwe: "CWE-798"
+      owasp: "A02:2021"
+    patterns:
+      - pattern: jwt.sign($PAYLOAD, "$SECRET", ...)
+      - pattern: jwt.verify($TOKEN, "$SECRET", ...)
+
+  # ============================================================
+  # OWASP A05:2021 - Security Misconfiguration
+  # ============================================================
+
+  - id: cors-wildcard
+    languages: [javascript]
+    message: |
+      Security Misconfiguration: CORS được cấu hình cho phép tất cả origins (*).
+      Điều này cho phép bất kỳ website nào gọi API của bạn với credentials của người dùng.
+      FIX: Chỉ định whitelist origin cụ thể: cors({ origin: ['https://yourdomain.com'] })
+    severity: WARNING
+    metadata:
+      cwe: "CWE-942"
+      owasp: "A05:2021"
+    pattern: app.use(cors())
+
+  - id: express-no-helmet
+    languages: [javascript]
+    message: |
+      Security Misconfiguration: Không sử dụng Helmet.js để thiết lập security headers.
+      Thiếu headers như CSP, HSTS, X-Frame-Options có thể dẫn đến XSS, clickjacking.
+      FIX: npm install helmet && app.use(helmet())
+    severity: WARNING
+    metadata:
+      cwe: "CWE-693"
+      owasp: "A05:2021"
+    patterns:
+      - pattern: |
+          const app = express()
+          ...
+          app.listen(...)
+      - pattern-not: |
+          const app = express()
+          ...
+          app.use(helmet())
+          ...
+          app.listen(...)
+
+  # ============================================================
+  # OWASP A09:2021 - Security Logging Failures (Thông tin lỗi lộ ra ngoài)
+  # ============================================================
+
+  - id: error-info-leakage
+    languages: [javascript]
+    message: |
+      Information Exposure: Stack trace hoặc thông tin nội bộ được trả về cho client.
+      Attacker có thể dùng thông tin này để hiểu kiến trúc hệ thống và lập kế hoạch tấn công.
+      FIX: Log lỗi server-side, chỉ trả về thông báo chung cho client.
+    severity: WARNING
+    metadata:
+      cwe: "CWE-209"
+      owasp: "A09:2021"
+    patterns:
+      - pattern: res.json({ error: $ERR.message, ... })
+      - pattern: res.json({ stack: $ERR.stack, ... })
+      - pattern: res.send($ERR.message)
+
+  # ============================================================
+  # OWASP A07:2021 - Identification and Authentication Failures
+  # ============================================================
+
+  - id: no-rate-limiting-auth
+    languages: [javascript]
+    message: |
+      Authentication: Route đăng nhập không có rate limiting.
+      Không có rate limiting cho phép brute force attack thử hàng nghìn mật khẩu.
+      FIX: Dùng express-rate-limit: app.use('/api/auth/login', rateLimit({ max: 5, windowMs: 15*60*1000 }))
+    severity: WARNING
+    metadata:
+      cwe: "CWE-307"
+      owasp: "A07:2021"
+    pattern: router.post('/login', $CONTROLLER.login)
+
+  # ============================================================
+  # OWASP A08:2021 - Software and Data Integrity Failures  
+  # ============================================================
+
+  - id: eval-code-injection
+    languages: [javascript]
+    message: |
+      Code Injection: Sử dụng eval() với input từ bên ngoài.
+      Attacker có thể thực thi code JavaScript tùy ý trên server.
+      FIX: Tuyệt đối không dùng eval() với dữ liệu từ người dùng.
+    severity: ERROR
+    metadata:
+      cwe: "CWE-95"
+      owasp: "A08:2021"
+    patterns:
+      - pattern: eval($REQ.body.$X)
+      - pattern: eval($REQ.query.$X)
+      - pattern: eval($REQ.params.$X)
+      - pattern: new Function($REQ.body.$X)

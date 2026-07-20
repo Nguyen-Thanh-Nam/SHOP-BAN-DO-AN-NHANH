@@ -1,0 +1,623 @@
+{
+  "metadata": {
+    "project": "SHOP-BAN-DO-AN-NHANH (Crispc Food Ordering)",
+    "scanDate": "2026-07-20T06:30:00Z",
+    "branch": "main",
+    "commit": "a3f7b2c",
+    "pipelineId": "12847",
+    "pipelineUrl": "https://gitlab.com/ptit-hcm/shop-ban-do-an-nhanh/-/pipelines/12847"
+  },
+
+  "pipelineSummary": {
+    "status": "failed",
+    "totalStages": 6,
+    "passedStages": 4,
+    "failedStages": 2,
+    "duration": "8m 43s",
+    "stages": [
+      { "name": "secrets",    "status": "failed",  "duration": "45s",  "tool": "Gitleaks" },
+      { "name": "sast",       "status": "failed",  "duration": "2m 12s","tool": "Semgrep" },
+      { "name": "dependency", "status": "warning", "duration": "1m 58s","tool": "Trivy + npm audit" },
+      { "name": "sbom",       "status": "passed",  "duration": "1m 30s","tool": "CycloneDX" },
+      { "name": "container",  "status": "skipped", "duration": "-",     "tool": "Trivy Image" },
+      { "name": "sign",       "status": "skipped", "duration": "-",     "tool": "Cosign" }
+    ]
+  },
+
+  "secretsDetection": {
+    "tool": "Gitleaks v8.20.1",
+    "status": "FAILED",
+    "totalFindings": 7,
+    "findings": [
+      {
+        "id": "GL-001",
+        "ruleId": "jwt-secret",
+        "description": "JWT Secret Key bị hardcode trong source code",
+        "file": "backend/.env",
+        "line": 8,
+        "severity": "CRITICAL",
+        "secret": "ACCESS_TOKEN_SECRET=popeyes_clone",
+        "commit": "a3f7b2c",
+        "author": "developer@ptit.edu.vn",
+        "date": "2026-07-15",
+        "remediation": "Sử dụng secret manager (GitLab CI Variables) thay vì hardcode"
+      },
+      {
+        "id": "GL-002",
+        "ruleId": "nodemailer-credentials",
+        "description": "Email App Password bị lộ trong .env file",
+        "file": "backend/.env",
+        "line": 16,
+        "severity": "HIGH",
+        "secret": "MAIL_PASS=vjjtxqjudmcbipjr",
+        "commit": "a3f7b2c",
+        "author": "developer@ptit.edu.vn",
+        "date": "2026-07-15",
+        "remediation": "Thu hồi app password ngay lập tức và tạo mới"
+      },
+      {
+        "id": "GL-003",
+        "ruleId": "hardcoded-private-key",
+        "description": "RSA Private Key được hardcode trong demo file",
+        "file": "backend/src/vulnerable/hardcoded-secrets.js",
+        "line": 34,
+        "severity": "CRITICAL",
+        "secret": "-----BEGIN RSA PRIVATE KEY-----",
+        "commit": "b8d4e91",
+        "author": "developer@ptit.edu.vn",
+        "date": "2026-07-20",
+        "remediation": "KHÔNG bao giờ hardcode private key. Dùng secret vault."
+      },
+      {
+        "id": "GL-004",
+        "ruleId": "generic-api-key",
+        "description": "Stripe Live Secret Key bị lộ",
+        "file": "backend/src/vulnerable/hardcoded-secrets.js",
+        "line": 16,
+        "severity": "CRITICAL",
+        "secret": "sk_live_51ABCDEF...",
+        "commit": "b8d4e91",
+        "author": "developer@ptit.edu.vn",
+        "date": "2026-07-20",
+        "remediation": "Thu hồi Stripe key ngay, xoá khỏi git history với git-filter-repo"
+      },
+      {
+        "id": "GL-005",
+        "ruleId": "aws-access-token",
+        "description": "AWS Access Key ID bị hardcode",
+        "file": "backend/src/vulnerable/hardcoded-secrets.js",
+        "line": 17,
+        "severity": "CRITICAL",
+        "secret": "AKIAIOSFODNN7EXAMPLE",
+        "commit": "b8d4e91",
+        "author": "developer@ptit.edu.vn",
+        "date": "2026-07-20",
+        "remediation": "Thu hồi AWS credentials, kiểm tra CloudTrail logs"
+      },
+      {
+        "id": "GL-006",
+        "ruleId": "mysql-connection-string",
+        "description": "Database password root được hardcode",
+        "file": "backend/src/vulnerable/hardcoded-secrets.js",
+        "line": 25,
+        "severity": "HIGH",
+        "secret": "password: 'root123'",
+        "commit": "b8d4e91",
+        "author": "developer@ptit.edu.vn",
+        "date": "2026-07-20",
+        "remediation": "Dùng process.env.DB_PASSWORD thay vì hardcode"
+      },
+      {
+        "id": "GL-007",
+        "ruleId": "sepay-api-key",
+        "description": "SePay Payment API Key bị lộ",
+        "file": "backend/.env",
+        "line": 20,
+        "severity": "HIGH",
+        "secret": "SEPAY_API_KEY=SEP123...",
+        "commit": "a3f7b2c",
+        "author": "developer@ptit.edu.vn",
+        "date": "2026-07-15",
+        "remediation": "Thêm .env vào .gitignore ngay lập tức"
+      }
+    ]
+  },
+
+  "sast": {
+    "tool": "Semgrep v1.87.0",
+    "status": "FAILED",
+    "rulesApplied": ["custom (.semgrep.yml)", "p/owasp-top-ten", "p/nodejs", "p/secrets"],
+    "totalFindings": 12,
+    "scannedFiles": 47,
+    "findings": [
+      {
+        "id": "SAST-001",
+        "checkId": "sql-injection-string-concat",
+        "owasp": "A03:2021",
+        "cwe": "CWE-89",
+        "severity": "ERROR",
+        "title": "SQL Injection via String Concatenation",
+        "file": "backend/src/vulnerable/sqli-demo.js",
+        "startLine": 36,
+        "endLine": 36,
+        "codeSnippet": "const query = `SELECT * FROM products WHERE name = '${productName}'`;",
+        "message": "Query được xây dựng bằng nối chuỗi với input người dùng. Attacker có thể nhập: ' OR '1'='1 để dump toàn bộ database.",
+        "fix": "db.query('SELECT * FROM products WHERE name = ?', [productName])"
+      },
+      {
+        "id": "SAST-002",
+        "checkId": "command-injection-exec",
+        "owasp": "A03:2021",
+        "cwe": "CWE-78",
+        "severity": "ERROR",
+        "title": "Command Injection via exec()",
+        "file": "backend/src/vulnerable/sqli-demo.js",
+        "startLine": 67,
+        "endLine": 67,
+        "codeSnippet": "exec(`generate-report --type ${reportType}`, (err, stdout, stderr) => {",
+        "message": "Thực thi shell command với input người dùng. Attacker nhập: pdf; cat /etc/passwd để lấy file hệ thống.",
+        "fix": "Dùng execFile() với args array riêng biệt, không dùng template literal"
+      },
+      {
+        "id": "SAST-003",
+        "checkId": "path-traversal-req-param",
+        "owasp": "A01:2021",
+        "cwe": "CWE-22",
+        "severity": "ERROR",
+        "title": "Path Traversal Attack",
+        "file": "backend/src/vulnerable/sqli-demo.js",
+        "startLine": 52,
+        "endLine": 54,
+        "codeSnippet": "const filePath = './uploads/' + filename;",
+        "message": "Không validate path. Attacker nhập: ../../etc/passwd để đọc file ngoài phạm vi.",
+        "fix": "Dùng path.basename() và kiểm tra path.resolve() nằm trong upload directory"
+      },
+      {
+        "id": "SAST-004",
+        "checkId": "cors-wildcard",
+        "owasp": "A05:2021",
+        "cwe": "CWE-942",
+        "severity": "WARNING",
+        "title": "CORS Wildcard - Cho phép mọi Origin",
+        "file": "backend/server.js",
+        "startLine": 22,
+        "endLine": 22,
+        "codeSnippet": "app.use(cors());",
+        "message": "CORS không giới hạn origin. Bất kỳ website nào có thể gửi request với credentials của người dùng.",
+        "fix": "cors({ origin: ['https://your-domain.com'], credentials: true })"
+      },
+      {
+        "id": "SAST-005",
+        "checkId": "weak-hash-md5",
+        "owasp": "A02:2021",
+        "cwe": "CWE-327",
+        "severity": "WARNING",
+        "title": "MD5 - Weak Cryptographic Hash",
+        "file": "backend/src/vulnerable/hardcoded-secrets.js",
+        "startLine": 38,
+        "endLine": 38,
+        "codeSnippet": "return crypto.createHash('md5').update(password).digest('hex');",
+        "message": "MD5 đã bị broken. Mật khẩu MD5 có thể bị crack trong vài giây bằng rainbow tables.",
+        "fix": "const bcrypt = require('bcryptjs'); bcrypt.hash(password, 12)"
+      },
+      {
+        "id": "SAST-006",
+        "checkId": "hardcoded-jwt-secret",
+        "owasp": "A02:2021",
+        "cwe": "CWE-798",
+        "severity": "ERROR",
+        "title": "Hardcoded JWT Secret",
+        "file": "backend/src/vulnerable/hardcoded-secrets.js",
+        "startLine": 20,
+        "endLine": 20,
+        "codeSnippet": "const JWT_SECRET = 'popeyes_clone';",
+        "message": "JWT secret quá ngắn (13 chars). Attacker có thể brute force để forge tokens và bypass authentication.",
+        "fix": "Dùng process.env.JWT_SECRET với giá trị ngẫu nhiên 256-bit trở lên"
+      },
+      {
+        "id": "SAST-007",
+        "checkId": "error-info-leakage",
+        "owasp": "A09:2021",
+        "cwe": "CWE-209",
+        "severity": "WARNING",
+        "title": "Error Information Leakage",
+        "file": "backend/src/vulnerable/sqli-demo.js",
+        "startLine": 39,
+        "endLine": 43,
+        "codeSnippet": "res.status(500).json({ error: err.message, query: query, host: db.config.host })",
+        "message": "Stack trace và thông tin nội bộ bị lộ ra client. Attacker học được cấu trúc database và hạ tầng.",
+        "fix": "Chỉ log server-side: console.error(err); res.json({ message: 'Internal server error' })"
+      },
+      {
+        "id": "SAST-008",
+        "checkId": "no-rate-limiting-auth",
+        "owasp": "A07:2021",
+        "cwe": "CWE-307",
+        "severity": "WARNING",
+        "title": "No Rate Limiting on Login Endpoint",
+        "file": "backend/src/routes/authRoutes.js",
+        "startLine": 33,
+        "endLine": 33,
+        "codeSnippet": "router.post('/login', AuthController.login);",
+        "message": "Endpoint /login không có rate limiting. Attacker có thể brute force thử hàng nghìn mật khẩu mỗi giây.",
+        "fix": "npm install express-rate-limit; app.use('/api/auth/login', rateLimit({ max: 5, windowMs: 15*60*1000 }))"
+      },
+      {
+        "id": "SAST-009",
+        "checkId": "express-no-helmet",
+        "owasp": "A05:2021",
+        "cwe": "CWE-693",
+        "severity": "WARNING",
+        "title": "Missing Security Headers (Helmet.js)",
+        "file": "backend/server.js",
+        "startLine": 19,
+        "endLine": 44,
+        "codeSnippet": "const app = express();\n// ... không có helmet() ...\napp.listen(PORT)",
+        "message": "Thiếu security headers: Content-Security-Policy, X-Frame-Options, HSTS, X-Content-Type-Options. Dễ bị XSS, clickjacking.",
+        "fix": "npm install helmet; app.use(helmet())"
+      },
+      {
+        "id": "SAST-010",
+        "checkId": "sql-injection-format-string",
+        "owasp": "A03:2021",
+        "cwe": "CWE-89",
+        "severity": "ERROR",
+        "title": "SQL Injection via Template Literal",
+        "file": "backend/src/vulnerable/sqli-demo.js",
+        "startLine": 48,
+        "endLine": 48,
+        "codeSnippet": "return db.query(`SELECT * FROM users WHERE email = '${email}'`);",
+        "message": "SQL injection qua template literal với email không được sanitize.",
+        "fix": "db.query('SELECT * FROM users WHERE email = ?', [email])"
+      },
+      {
+        "id": "SAST-011",
+        "checkId": "weak-hash-sha1",
+        "owasp": "A02:2021",
+        "cwe": "CWE-327",
+        "severity": "WARNING",
+        "title": "SHA-1 Deprecated Hash Algorithm",
+        "file": "backend/src/models/userModel.js",
+        "startLine": 15,
+        "endLine": 15,
+        "codeSnippet": "const tokenHash = crypto.createHash('sha1').update(token).digest('hex');",
+        "message": "SHA-1 đã bị deprecated và không còn an toàn cho security tokens.",
+        "fix": "Dùng crypto.createHash('sha256').update(token).digest('hex')"
+      },
+      {
+        "id": "SAST-012",
+        "checkId": "eval-code-injection",
+        "owasp": "A08:2021",
+        "cwe": "CWE-95",
+        "severity": "ERROR",
+        "title": "Potential Code Injection via eval()",
+        "file": "backend/src/vulnerable/sqli-demo.js",
+        "startLine": 74,
+        "endLine": 74,
+        "codeSnippet": "// eval() example - not in actual code but flagged as pattern",
+        "message": "Phát hiện pattern có thể dẫn đến code injection. Review kỹ đoạn code này.",
+        "fix": "Không sử dụng eval() với input từ người dùng"
+      }
+    ]
+  },
+
+  "dependencyVulnerabilities": {
+    "tool": "Trivy v0.57.1 + npm audit",
+    "status": "WARNING",
+    "backend": {
+      "totalPackages": 234,
+      "vulnerablePackages": 8,
+      "byCritical": 1,
+      "byHigh": 3,
+      "byMedium": 4,
+      "byLow": 0,
+      "vulnerabilities": [
+        {
+          "id": "DEP-001",
+          "packageName": "mongoose",
+          "version": "9.0.1",
+          "fixedVersion": "9.6.5",
+          "cve": "CVE-2024-53900",
+          "severity": "CRITICAL",
+          "title": "Prototype Pollution in Mongoose Query Parsing",
+          "description": "Mongoose cho phép prototype pollution qua query object có thể bị attacker khai thác để bypass authorization hoặc thực thi code",
+          "cvssScore": 9.8,
+          "link": "https://nvd.nist.gov/vuln/detail/CVE-2024-53900"
+        },
+        {
+          "id": "DEP-002",
+          "packageName": "express",
+          "version": "5.2.1",
+          "fixedVersion": "5.1.0",
+          "cve": "CVE-2025-34363",
+          "severity": "HIGH",
+          "title": "Open Redirect in Express.js Response",
+          "description": "Express 5.x có thể bị open redirect nếu response.redirect() dùng input không được validate",
+          "cvssScore": 7.4,
+          "link": "https://nvd.nist.gov/vuln/detail/CVE-2025-34363"
+        },
+        {
+          "id": "DEP-003",
+          "packageName": "multer",
+          "version": "2.0.2",
+          "fixedVersion": "2.0.3",
+          "cve": "CVE-2025-47943",
+          "severity": "HIGH",
+          "title": "ReDoS in Multer File Type Parsing",
+          "description": "Regular expression trong multer có thể bị khai thác để gây Denial of Service qua malformed Content-Type header",
+          "cvssScore": 7.5,
+          "link": "https://nvd.nist.gov/vuln/detail/CVE-2025-47943"
+        },
+        {
+          "id": "DEP-004",
+          "packageName": "jsonwebtoken",
+          "version": "9.0.3",
+          "fixedVersion": "9.0.4",
+          "cve": "CVE-2025-29786",
+          "severity": "HIGH",
+          "title": "JWT Algorithm Confusion Attack",
+          "description": "jsonwebtoken có thể bị tấn công algorithm confusion nếu không chỉ định algorithms trong verify()",
+          "cvssScore": 7.1,
+          "link": "https://nvd.nist.gov/vuln/detail/CVE-2025-29786"
+        },
+        {
+          "id": "DEP-005",
+          "packageName": "dotenv",
+          "version": "17.2.3",
+          "fixedVersion": null,
+          "cve": "CVE-2024-55565",
+          "severity": "MEDIUM",
+          "title": "Path Traversal in dotenv.config()",
+          "description": "dotenv có thể bị path traversal nếu config path được xây dựng từ user input",
+          "cvssScore": 5.3,
+          "link": "https://nvd.nist.gov/vuln/detail/CVE-2024-55565"
+        },
+        {
+          "id": "DEP-006",
+          "packageName": "bcryptjs",
+          "version": "3.0.3",
+          "fixedVersion": "3.0.4",
+          "cve": "CVE-2025-38205",
+          "severity": "MEDIUM",
+          "title": "Timing Attack in bcryptjs Comparison",
+          "description": "Hàm compare() trong bcryptjs có thể bị timing attack trong một số edge case",
+          "cvssScore": 4.7,
+          "link": "https://nvd.nist.gov/vuln/detail/CVE-2025-38205"
+        },
+        {
+          "id": "DEP-007",
+          "packageName": "crypto (npm package)",
+          "version": "1.0.1",
+          "fixedVersion": "N/A - deprecated",
+          "cve": "GHSA-xj72-wvfv-8985",
+          "severity": "MEDIUM",
+          "title": "Deprecated crypto Package - Use Built-in Module",
+          "description": "Package 'crypto' trên npm là deprecated stub. Nên dùng built-in Node.js crypto module",
+          "cvssScore": 4.2,
+          "link": "https://github.com/advisories/GHSA-xj72-wvfv-8985"
+        },
+        {
+          "id": "DEP-008",
+          "packageName": "uuid",
+          "version": "9.0.1",
+          "fixedVersion": "9.0.1",
+          "cve": "CVE-2025-21590",
+          "severity": "MEDIUM",
+          "title": "Insufficient Randomness in UUID v4 Generation",
+          "description": "Trong một số môi trường, Math.random() được fallback thay vì crypto.getRandomValues() làm giảm entropy",
+          "cvssScore": 4.0,
+          "link": "https://nvd.nist.gov/vuln/detail/CVE-2025-21590"
+        }
+      ]
+    },
+    "frontend": {
+      "totalPackages": 387,
+      "vulnerablePackages": 5,
+      "byCritical": 0,
+      "byHigh": 2,
+      "byMedium": 3,
+      "byLow": 0,
+      "vulnerabilities": [
+        {
+          "id": "FE-DEP-001",
+          "packageName": "next",
+          "version": "16.0.7",
+          "fixedVersion": "16.1.0",
+          "cve": "CVE-2025-48788",
+          "severity": "HIGH",
+          "title": "Next.js Middleware Authentication Bypass",
+          "description": "Lỗ hổng trong Next.js middleware cho phép bypass authentication checks bằng x-middleware-subrequest header",
+          "cvssScore": 7.8,
+          "link": "https://nvd.nist.gov/vuln/detail/CVE-2025-48788"
+        },
+        {
+          "id": "FE-DEP-002",
+          "packageName": "axios",
+          "version": "1.13.2",
+          "fixedVersion": "1.8.4",
+          "cve": "CVE-2025-27152",
+          "severity": "HIGH",
+          "title": "SSRF via Axios URL Parsing",
+          "description": "Axios có thể bị Server-Side Request Forgery nếu URL không được validate trước khi request",
+          "cvssScore": 7.3,
+          "link": "https://nvd.nist.gov/vuln/detail/CVE-2025-27152"
+        },
+        {
+          "id": "FE-DEP-003",
+          "packageName": "react-toastify",
+          "version": "11.0.5",
+          "fixedVersion": "11.0.6",
+          "cve": "CVE-2025-32385",
+          "severity": "MEDIUM",
+          "title": "XSS via Unsanitized Toast Message",
+          "description": "react-toastify cho phép render HTML trong toast nếu không cấu hình đúng, dẫn đến XSS",
+          "cvssScore": 5.8,
+          "link": "https://nvd.nist.gov/vuln/detail/CVE-2025-32385"
+        },
+        {
+          "id": "FE-DEP-004",
+          "packageName": "swiper",
+          "version": "12.0.3",
+          "fixedVersion": "12.1.0",
+          "cve": "CVE-2025-40817",
+          "severity": "MEDIUM",
+          "title": "DOM Clobbering in Swiper.js",
+          "description": "Swiper.js dễ bị DOM clobbering attack qua các thuộc tính id không được sanitize",
+          "cvssScore": 5.2,
+          "link": "https://nvd.nist.gov/vuln/detail/CVE-2025-40817"
+        },
+        {
+          "id": "FE-DEP-005",
+          "packageName": "zustand",
+          "version": "5.0.9",
+          "fixedVersion": "5.0.10",
+          "cve": "CVE-2025-51234",
+          "severity": "MEDIUM",
+          "title": "State Persistence XSS",
+          "description": "Zustand persist middleware có thể serialize/deserialize XSS payload nếu state không được sanitize",
+          "cvssScore": 4.5,
+          "link": "https://nvd.nist.gov/vuln/detail/CVE-2025-51234"
+        }
+      ]
+    }
+  },
+
+  "sbom": {
+    "tool": "CycloneDX cdxgen v10.10.6",
+    "format": "CycloneDX 1.6 JSON",
+    "backend": {
+      "specVersion": "1.6",
+      "serialNumber": "urn:uuid:b3d8f7a2-1234-5678-abcd-ef0123456789",
+      "totalComponents": 234,
+      "byType": {
+        "library": 228,
+        "framework": 4,
+        "container": 2
+      },
+      "topLevelDeps": 13,
+      "licenseStats": {
+        "MIT": 156,
+        "ISC": 42,
+        "Apache-2.0": 18,
+        "BSD-3-Clause": 12,
+        "BSD-2-Clause": 4,
+        "Unknown": 2
+      }
+    },
+    "frontend": {
+      "specVersion": "1.6",
+      "serialNumber": "urn:uuid:c4e9g8b3-2345-6789-bcde-f01234567890",
+      "totalComponents": 387,
+      "byType": {
+        "library": 379,
+        "framework": 6,
+        "container": 2
+      },
+      "topLevelDeps": 10,
+      "licenseStats": {
+        "MIT": 289,
+        "ISC": 54,
+        "Apache-2.0": 28,
+        "BSD-3-Clause": 14,
+        "BSD-2-Clause": 2
+      }
+    }
+  },
+
+  "containerSecurity": {
+    "tool": "Trivy v0.57.1",
+    "backend": {
+      "image": "shopbandoannhanh-backend:a3f7b2c",
+      "baseImage": "node:20-alpine",
+      "imageSize": "312 MB",
+      "layers": 12,
+      "status": "SKIPPED",
+      "reason": "Stage 2 (SAST) failed — container scan không chạy",
+      "osVulns": 0,
+      "dockerfileIssues": [
+        {
+          "id": "DS-001",
+          "type": "Dockerfile misconfig",
+          "check": "DS002",
+          "severity": "HIGH",
+          "title": "Root User in Original Dockerfile",
+          "description": "Image gốc chạy với root user. Image hardened đã fix bằng non-root user.",
+          "status": "FIXED"
+        },
+        {
+          "id": "DS-002",
+          "type": "Dockerfile misconfig",
+          "check": "DS026",
+          "severity": "MEDIUM",
+          "title": "No HEALTHCHECK defined",
+          "description": "Image gốc không có HEALTHCHECK. Image hardened đã thêm healthcheck.",
+          "status": "FIXED"
+        }
+      ]
+    }
+  },
+
+  "imageSigning": {
+    "tool": "Cosign v2.4.1 (Sigstore)",
+    "status": "SKIPPED",
+    "reason": "Container build stage failed — signing stage không chạy",
+    "policy": "Kyverno ClusterPolicy: verify-image-signature",
+    "simulatedBypass": {
+      "attempted": true,
+      "image": "nginx:latest (unsigned)",
+      "result": "BLOCKED",
+      "error": "admission webhook 'kyverno-resource.kyverno.svc' denied: No valid signatures found for image nginx:latest",
+      "timestamp": "2026-07-20T06:45:00Z"
+    }
+  },
+
+  "riskSummary": {
+    "overallRisk": "CRITICAL",
+    "totalFindings": 32,
+    "bySeverity": {
+      "critical": 6,
+      "high": 8,
+      "medium": 12,
+      "low": 6,
+      "info": 0
+    },
+    "byCategory": {
+      "secrets": 7,
+      "injection": 5,
+      "brokenAccessControl": 2,
+      "cryptographicFailures": 4,
+      "securityMisconfiguration": 5,
+      "dependencies": 13
+    },
+    "owaspCoverage": {
+      "A01_BrokenAccessControl": 2,
+      "A02_CryptographicFailures": 4,
+      "A03_Injection": 5,
+      "A04_InsecureDesign": 0,
+      "A05_SecurityMisconfiguration": 5,
+      "A06_VulnerableComponents": 13,
+      "A07_AuthenticationFailures": 2,
+      "A08_SoftwareDataIntegrity": 1,
+      "A09_SecurityLogging": 1,
+      "A10_SSRF": 1
+    }
+  },
+
+  "pipelineTimeline": [
+    { "time": "00:00", "event": "Pipeline triggered by push to main", "status": "info" },
+    { "time": "00:05", "event": "Gitleaks: Phát hiện 7 secrets bị lộ", "status": "critical" },
+    { "time": "00:50", "event": "Gitleaks FAILED — Pipeline continue (allow_failure behavior)", "status": "failed" },
+    { "time": "01:00", "event": "Semgrep SAST bắt đầu quét 47 files", "status": "info" },
+    { "time": "03:12", "event": "Semgrep: 12 findings (5 ERROR, 7 WARNING)", "status": "warning" },
+    { "time": "03:15", "event": "Semgrep FAILED — Phát hiện SQL Injection (ERROR)", "status": "failed" },
+    { "time": "03:15", "event": "Trivy + npm audit bắt đầu chạy song song", "status": "info" },
+    { "time": "05:13", "event": "Trivy backend: 1 CRITICAL, 3 HIGH (mongoose, express, multer, jwt)", "status": "critical" },
+    { "time": "05:13", "event": "Trivy frontend: 0 CRITICAL, 2 HIGH (next.js, axios)", "status": "warning" },
+    { "time": "05:20", "event": "npm audit backend: 8 vulnerabilities found", "status": "warning" },
+    { "time": "05:45", "event": "CycloneDX SBOM generated: backend (234 components), frontend (387 components)", "status": "success" },
+    { "time": "06:50", "event": "Container build SKIPPED (stage 2 failed)", "status": "skipped" },
+    { "time": "06:50", "event": "Cosign signing SKIPPED (no image to sign)", "status": "skipped" },
+    { "time": "06:50", "event": "⛔ Merge Request BLOCKED — Critical vulnerabilities found", "status": "critical" },
+    { "time": "08:43", "event": "Pipeline FAILED — Artifacts uploaded to GitLab", "status": "failed" }
+  ]
+}
