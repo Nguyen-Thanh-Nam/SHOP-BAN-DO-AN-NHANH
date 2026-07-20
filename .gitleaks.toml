@@ -75,7 +75,8 @@ paths = [
   '''.*\.test\.js$''',
   '''.*\.spec\.js$''',
   '''.*\.md$''',
-  '''security-dashboard/data/.*'''
+  '''security-dashboard/data/.*''',
+  '''database\.sql$'''
 ]
 
 # Loại trừ các patterns thường là placeholder
