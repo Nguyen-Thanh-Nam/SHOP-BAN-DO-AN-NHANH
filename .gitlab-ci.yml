@@ -1,250 +1,192 @@
-# ================================================================
-# GitLab CI/CD DevSecOps & Supply Chain Security Pipeline
-# Cấu hình 15 Stages theo yêu cầu Đồ án ATTT (promt.txt)
-# Tương thích Docker runner local của bạn
-# ================================================================
-
 stages:
-  - validate
-  - test
-  - sast
-  - secret-scan
-  - dependency-scan
-  - build
-  - sbom
-  - image-scan
-  - sign
-  - push
-  - deploy
-  - verify
-  - dast
-  - runtime
-  - report
-
+- validate
+- test
+- sast
+- secret-scan
+- dependency-scan
+- build
+- sbom
+- image-scan
+- sign
+- push
+- deploy
+- verify
+- dast
+- runtime
+- report
 variables:
-  BACKEND_IMAGE:  "$CI_REGISTRY_IMAGE/backend:$CI_COMMIT_SHORT_SHA"
-  FRONTEND_IMAGE: "$CI_REGISTRY_IMAGE/frontend:$CI_COMMIT_SHORT_SHA"
-  TRIVY_NO_PROGRESS: "true"
-  TRIVY_CACHE_DIR:   ".trivy-cache"
-  DOCKER_HOST: "unix:///var/run/docker.sock"
-  NEXT_TELEMETRY_DISABLED: "1"
-
-# ----------------------------------------------------------------
-# 1. STAGE: validate
-# ----------------------------------------------------------------
+  BACKEND_IMAGE: $CI_REGISTRY_IMAGE/backend:$CI_COMMIT_SHORT_SHA
+  FRONTEND_IMAGE: $CI_REGISTRY_IMAGE/frontend:$CI_COMMIT_SHORT_SHA
+  TRIVY_NO_PROGRESS: 'true'
+  TRIVY_CACHE_DIR: .trivy-cache
+  DOCKER_HOST: unix:///var/run/docker.sock
+  NEXT_TELEMETRY_DISABLED: '1'
 validate-dockerfiles:
   stage: validate
   image: hadolint/hadolint:latest-alpine
   allow_failure: true
   script:
-    - echo "🔍 Kiểm tra cú pháp và bảo mật Dockerfiles bằng Hadolint..."
-    - hadolint backend/Dockerfile || true
-    - hadolint frontend/Dockerfile || true
-
+  - echo "🔍 Kiểm tra cú pháp và bảo mật Dockerfiles bằng Hadolint..."
+  - hadolint backend/Dockerfile || true
+  - hadolint frontend/Dockerfile || true
 validate-k8s-manifests:
   stage: validate
   image:
     name: garethr/kubeval:latest
-    entrypoint: [""]
+    entrypoint:
+    - ''
   allow_failure: true
   script:
-    - echo "🔍 Kiểm tra cú pháp cấu hình Kubernetes (Kubeval)..."
-    - kubeval --version || true
-
-# ----------------------------------------------------------------
-# 2. STAGE: test
-# ----------------------------------------------------------------
+  - echo "🔍 Kiểm tra cú pháp cấu hình Kubernetes (Kubeval)..."
+  - kubeval --version || true
 unit-testing:
   stage: test
   image: node:20-alpine
   allow_failure: true
   script:
-    - echo "🧪 Chạy Unit Tests và Code Coverage..."
-    - cd backend && npm install --silent && npm test || true
-
-# ----------------------------------------------------------------
-# 3. STAGE: sast
-# ----------------------------------------------------------------
+  - echo "🧪 Chạy Unit Tests và Code Coverage..."
+  - cd backend && npm install --silent && npm test || true
 semgrep-sast:
   stage: sast
   image: semgrep/semgrep:1.87.0
   allow_failure: false
   script:
-    - echo "Semgrep SAST scan..."
-    - semgrep scan --config .semgrep.yml --config "p/owasp-top-ten" --json --output semgrep-report.json backend/src/ || true
-    - 'grep -q "\"severity\":\"ERROR\"" semgrep-report.json && (echo "❌ Phát hiện lỗi nghiêm trọng!" && exit 1) || echo "✅ An toàn"'
-
+  - echo "Semgrep SAST scan..."
+  - semgrep scan --config .semgrep.yml --config "p/owasp-top-ten" --json --output
+    semgrep-report.json backend/src/ || true
+  - grep -q "\"severity\":\"ERROR\"" semgrep-report.json && (echo "❌ Phát hiện lỗi
+    nghiêm trọng!" && exit 1) || echo "✅ An toàn"
   artifacts:
-    name: "semgrep-sast-$CI_COMMIT_SHORT_SHA"
+    name: semgrep-sast-$CI_COMMIT_SHORT_SHA
     when: always
     paths:
-      - semgrep-report.json
-
-# ----------------------------------------------------------------
-# 4. STAGE: secret-scan
-# ----------------------------------------------------------------
+    - semgrep-report.json
 gitleaks-secret-scan:
   stage: secret-scan
   image:
     name: zricethezav/gitleaks:v8.20.1
-    entrypoint: [""]
+    entrypoint:
+    - ''
   allow_failure: false
   script:
-    - echo "Gitleaks scan..."
-    - 'gitleaks detect --source . --config .gitleaks.toml --report-format json --report-path gitleaks-report.json --exit-code 1 --verbose || (echo "PHAT HIEN SECRETS!" && cat gitleaks-report.json && exit 1)'
+  - echo "Gitleaks scan..."
+  - gitleaks detect --source . --config .gitleaks.toml --report-format json --report-path
+    gitleaks-report.json --exit-code 1 --verbose || (echo "PHAT HIEN SECRETS!" &&
+    cat gitleaks-report.json && exit 1)
   artifacts:
-    name: "gitleaks-$CI_COMMIT_SHORT_SHA"
+    name: gitleaks-$CI_COMMIT_SHORT_SHA
     when: always
     paths:
-      - gitleaks-report.json
-
-# ----------------------------------------------------------------
-# 5. STAGE: dependency-scan
-# ----------------------------------------------------------------
+    - gitleaks-report.json
 trivy-dependency-scan:
   stage: dependency-scan
   image:
     name: aquasec/trivy:0.57.1
-    entrypoint: [""]
+    entrypoint:
+    - ''
   allow_failure: false
   script:
-    - echo "📦 Trivy SCA - Quét lỗ hổng thư viện phụ thuộc..."
-    - trivy fs --scanners vuln --severity CRITICAL,HIGH --format json --output trivy-dep-report.json ./backend/
+  - echo "📦 Trivy SCA - Quét lỗ hổng thư viện phụ thuộc..."
+  - trivy fs --scanners vuln --severity CRITICAL,HIGH --format json --output trivy-dep-report.json
+    ./backend/
   artifacts:
-    name: "trivy-dep-$CI_COMMIT_SHORT_SHA"
+    name: trivy-dep-$CI_COMMIT_SHORT_SHA
     when: always
     paths:
-      - trivy-dep-report.json
-
-# ----------------------------------------------------------------
-# 6. STAGE: build
-# ----------------------------------------------------------------
+    - trivy-dep-report.json
 build-docker-images:
   stage: build
   image: docker:27
   allow_failure: false
   before_script:
-    - docker login -u "$CI_REGISTRY_USER" -p "$CI_REGISTRY_PASSWORD" "$CI_REGISTRY"
+  - docker login -u "$CI_REGISTRY_USER" -p "$CI_REGISTRY_PASSWORD" "$CI_REGISTRY"
   script:
-    - echo "🐳 Build Docker images..."
-    - docker build --tag "$BACKEND_IMAGE" ./backend/
-    - docker build --tag "$FRONTEND_IMAGE" ./frontend/
-    - docker push "$BACKEND_IMAGE"
-    - docker push "$FRONTEND_IMAGE"
-
-# ----------------------------------------------------------------
-# 7. STAGE: sbom
-# ----------------------------------------------------------------
+  - echo "🐳 Build Docker images..."
+  - docker build --tag "$BACKEND_IMAGE" ./backend/
+  - docker build --tag "$FRONTEND_IMAGE" ./frontend/
+  - docker push "$BACKEND_IMAGE"
+  - docker push "$FRONTEND_IMAGE"
 generate-sbom:
   stage: sbom
   image: node:20-alpine
   allow_failure: true
   script:
-    - echo "📋 Sinh SBOM dạng CycloneDX..."
-    - npm install -g @cyclonedx/cdxgen@10.10.6 --silent
-    - cdxgen --type nodejs --output sbom-backend.json --format json --spec-version 1.6 ./backend/ || true
+  - echo "📋 Sinh SBOM dạng CycloneDX..."
+  - npm install -g @cyclonedx/cdxgen@10.10.6 --silent
+  - cdxgen --type nodejs --output sbom-backend.json --format json --spec-version 1.6
+    ./backend/ || true
   artifacts:
-    name: "sbom-$CI_COMMIT_SHORT_SHA"
+    name: sbom-$CI_COMMIT_SHORT_SHA
     paths:
-      - sbom-backend.json
-
-# ----------------------------------------------------------------
-# 8. STAGE: image-scan
-# ----------------------------------------------------------------
+    - sbom-backend.json
 trivy-image-scan:
   stage: image-scan
   image: docker:27
   allow_failure: false
   script:
-    - echo "🔍 Quét lỗ hổng Docker image vừa build..."
-    - docker run --rm -v /var/run/docker.sock:/var/run/docker.sock aquasec/trivy:0.57.1 image --exit-code 1 --severity CRITICAL --quiet "$BACKEND_IMAGE"
-
-# ----------------------------------------------------------------
-# 9. STAGE: sign
-# ----------------------------------------------------------------
+  - echo "🔍 Quét lỗ hổng Docker image vừa build..."
+  - docker run --rm -v /var/run/docker.sock:/var/run/docker.sock aquasec/trivy:0.57.1
+    image --exit-code 1 --severity CRITICAL --quiet "$BACKEND_IMAGE"
 cosign-sign-image:
   stage: sign
   image: docker:27
   allow_failure: true
   before_script:
-    - apk add --no-cache curl
-    - curl -sSfL "https://github.com/sigstore/cosign/releases/download/v2.4.1/cosign-linux-amd64" -o /usr/local/bin/cosign
-    - chmod +x /usr/local/bin/cosign
+  - apk add --no-cache curl
+  - curl -sSfL "https://github.com/sigstore/cosign/releases/download/v2.4.1/cosign-linux-amd64"
+    -o /usr/local/bin/cosign
+  - chmod +x /usr/local/bin/cosign
   script:
-    - echo "🔏 Ký Docker Image sử dụng Cosign..."
-    - docker login -u "$CI_REGISTRY_USER" -p "$CI_REGISTRY_PASSWORD" "$CI_REGISTRY"
-    - COSIGN_EXPERIMENTAL=1 cosign sign --yes "$BACKEND_IMAGE"
-
-# ----------------------------------------------------------------
-# 10. STAGE: push
-# ----------------------------------------------------------------
+  - echo "🔏 Ký Docker Image sử dụng Cosign..."
+  - docker login -u "$CI_REGISTRY_USER" -p "$CI_REGISTRY_PASSWORD" "$CI_REGISTRY"
+  - COSIGN_EXPERIMENTAL=1 cosign sign --yes "$BACKEND_IMAGE"
 push-to-registry:
   stage: push
   image: docker:27
   script:
-    - echo "✅ Xác nhận và gắn tag phát hành cho container image..."
-    - docker login -u "$CI_REGISTRY_USER" -p "$CI_REGISTRY_PASSWORD" "$CI_REGISTRY"
-    - docker tag "$BACKEND_IMAGE" "$CI_REGISTRY_IMAGE/backend:latest"
-    - docker push "$CI_REGISTRY_IMAGE/backend:latest"
-
-# ----------------------------------------------------------------
-# 11. STAGE: deploy
-# ----------------------------------------------------------------
+  - echo "✅ Xác nhận và gắn tag phát hành cho container image..."
+  - docker login -u "$CI_REGISTRY_USER" -p "$CI_REGISTRY_PASSWORD" "$CI_REGISTRY"
+  - docker tag "$BACKEND_IMAGE" "$CI_REGISTRY_IMAGE/backend:latest"
+  - docker push "$CI_REGISTRY_IMAGE/backend:latest"
 k8s-deploy:
   stage: deploy
   image: lachlanevenson/k8s-kubectl:latest
   allow_failure: true
   script:
-    - echo "☸️ Triển khai ứng dụng lên Kubernetes cluster..."
-    - kubectl get nodes || echo "Môi trường lab Kuberenetes chạy cục bộ"
-
-# ----------------------------------------------------------------
-# 12. STAGE: verify
-# ----------------------------------------------------------------
+  - echo "☸️ Triển khai ứng dụng lên Kubernetes cluster..."
+  - kubectl get nodes || echo "Môi trường lab Kuberenetes chạy cục bộ"
 kyverno-verify:
   stage: verify
   image: lachlanevenson/k8s-kubectl:latest
   allow_failure: true
   script:
-    - echo "Kyverno verify - Xac thuc chu ky so container image..."
-    - kubectl get pods || true
-
-# ----------------------------------------------------------------
-# 13. STAGE: dast
-# ----------------------------------------------------------------
+  - echo "Kyverno verify - Xac thuc chu ky so container image..."
+  - kubectl get pods || true
 owasp-zap-dast:
   stage: dast
   image: owasp/zap2docker-stable:latest
   allow_failure: true
   script:
-    - echo "⚡ OWASP ZAP DAST - Quét lỗ hổng động..."
-    - zap-baseline.py -t http://localhost:3000 -r zap-report.html || true
+  - echo "⚡ OWASP ZAP DAST - Quét lỗ hổng động..."
+  - zap-baseline.py -t http://localhost:3000 -r zap-report.html || true
   artifacts:
-    name: "zap-report-$CI_COMMIT_SHORT_SHA"
+    name: zap-report-$CI_COMMIT_SHORT_SHA
     when: always
     paths:
-      - zap-report.html
-
-# ----------------------------------------------------------------
-# 14. STAGE: runtime
-# ----------------------------------------------------------------
+    - zap-report.html
 falco-runtime-check:
   stage: runtime
   image: alpine:latest
   allow_failure: true
   script:
-    - echo "👁️ Falco Runtime Security - Giám sát bảo mật runtime container..."
-    - echo "Thu thập runtime security alerts..."
-
-# ----------------------------------------------------------------
-# 15. STAGE: report
-# ----------------------------------------------------------------
+  - echo "👁️ Falco Runtime Security - Giám sát bảo mật runtime container..."
+  - echo "Thu thập runtime security alerts..."
 generate-sec-report:
   stage: report
   image: alpine:latest
   when: always
   script:
-    - echo "=================================================="
-    - echo "DEVSECOPS PIPELINE COMPLETED SUCCESSFULLY"
-    - echo "Tất cả 15 Stages đã chạy qua trơn tru!"
-    - echo "=================================================="
+  - echo "=================================================="
+  - echo "DEVSECOPS PIPELINE COMPLETED SUCCESSFULLY"
+  - echo "Tất cả 15 Stages đã chạy qua trơn tru!"
+  - echo "=================================================="
