@@ -72,7 +72,14 @@ semgrep-sast:
   script:
     - echo "🔍 Semgrep SAST — Phân tích tĩnh mã nguồn..."
     - semgrep scan --config .semgrep.yml --config "p/owasp-top-ten" --json --output semgrep-report.json backend/src/ || true
-    - python3 -c "import json, sys; data=json.load(open('semgrep-report.json')); r=data.get('results', []); err=[x for x in r if x.get('extra',{}).get('severity')=='ERROR']; print('Semgrep: Total findings:', len(r), '- Errors:', len(err)); sys.exit(1 if err else 0)"
+    - |
+      python3 -c "import json, sys
+      data=json.load(open('semgrep-report.json'))
+      r=data.get('results', [])
+      err=[x for x in r if x.get('extra',{}).get('severity')=='ERROR']
+      print('Total findings:', len(r), 'Errors:', len(err))
+      sys.exit(1 if err else 0)"
+
   artifacts:
     name: "semgrep-sast-$CI_COMMIT_SHORT_SHA"
     when: always
