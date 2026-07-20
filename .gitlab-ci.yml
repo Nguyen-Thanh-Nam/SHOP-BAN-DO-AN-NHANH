@@ -307,12 +307,7 @@ build-scan-backend:
     - docker login -u "$CI_REGISTRY_USER" -p "$CI_REGISTRY_PASSWORD" "$CI_REGISTRY"
   script:
     - echo "🐳 Build backend Docker image..."
-    - docker build
-        --tag "$BACKEND_IMAGE"
-        --label "git.commit=$CI_COMMIT_SHA"
-        --label "git.branch=$CI_COMMIT_REF_NAME"
-        --label "pipeline.id=$CI_PIPELINE_ID"
-        ./backend/
+    - docker build --tag "$BACKEND_IMAGE" --label "git.commit=$CI_COMMIT_SHA" --label "git.branch=$CI_COMMIT_REF_NAME" --label "pipeline.id=$CI_PIPELINE_ID" ./backend/
 
     # Quét bảo mật ảnh docker bằng trivy
     - docker run --rm -v /var/run/docker.sock:/var/run/docker.sock -v "$CI_PROJECT_DIR/.trivy-cache:/root/.cache/" aquasec/trivy:0.57.1 image --exit-code 0 --severity CRITICAL,HIGH --format json --output /tmp/trivy-image-backend.json "$BACKEND_IMAGE" || true
@@ -348,11 +343,7 @@ build-scan-frontend:
     - docker login -u "$CI_REGISTRY_USER" -p "$CI_REGISTRY_PASSWORD" "$CI_REGISTRY"
   script:
     - echo "🐳 Build frontend Docker image..."
-    - docker build
-        --tag "$FRONTEND_IMAGE"
-        --label "git.commit=$CI_COMMIT_SHA"
-        --build-arg NEXT_PUBLIC_API_URL="http://localhost:4000/api"
-        ./frontend/
+    - docker build --tag "$FRONTEND_IMAGE" --label "git.commit=$CI_COMMIT_SHA" --build-arg NEXT_PUBLIC_API_URL="http://localhost:4000/api" ./frontend/
 
     # Chạy quét bảo mật ảnh docker bằng trivy
     - docker run --rm -v /var/run/docker.sock:/var/run/docker.sock aquasec/trivy:0.57.1 image --exit-code 1 --severity CRITICAL --quiet "$FRONTEND_IMAGE"
