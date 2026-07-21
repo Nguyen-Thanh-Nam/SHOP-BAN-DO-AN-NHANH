@@ -166,7 +166,10 @@ push-to-registry:
 
 k8s-deploy:
   stage: deploy
-  image: lachlanevenson/k8s-kubectl:latest
+  image:
+    name: lachlanevenson/k8s-kubectl:latest
+    entrypoint:
+    - ''
   allow_failure: false
   script:
   - echo "☸️ Triển khai ứng dụng lên Kubernetes cluster..."
@@ -174,7 +177,10 @@ k8s-deploy:
 
 kyverno-verify:
   stage: verify
-  image: lachlanevenson/k8s-kubectl:latest
+  image:
+    name: lachlanevenson/k8s-kubectl:latest
+    entrypoint:
+    - ''
   allow_failure: false
   script:
   - echo "Kyverno verify - Xac thuc chu ky so container image..."
