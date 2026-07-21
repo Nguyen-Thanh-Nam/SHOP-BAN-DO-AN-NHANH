@@ -40,6 +40,11 @@ app.use("/api/orders", orderRoutes);
 app.use("/api/users", userRoutes);
 app.use("/api/dashboard", dashboardRoutes);
 
+// Healthcheck endpoint cho Docker
+app.get("/api/health", (req, res) => {
+    res.status(200).json({ status: "OK", message: "Backend is running" });
+});
+
 app.listen(PORT, () => {
     console.log(`Server is running on http://localhost:${PORT}`);
 });
