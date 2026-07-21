@@ -188,7 +188,7 @@ kyverno-verify:
 
 owasp-zap-dynamic-analysis:
   stage: dynamic-analysis
-  image: owasp/zap2docker-stable:latest
+  image: zaproxy/zap-stable:latest
   allow_failure: false
   script:
   - echo "⚡ OWASP ZAP dynamic-analysis - Quét lỗ hổng động..."
