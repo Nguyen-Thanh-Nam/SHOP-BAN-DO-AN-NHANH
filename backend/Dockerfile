@@ -13,7 +13,7 @@
 FROM node:20-alpine AS builder
 
 # Cài đặt các package cần thiết cho build
-RUN apk add --no-cache dumb-init && npm install -g npm@latest
+RUN apk add --no-cache dumb-init && npm install -g npm@10
 
 WORKDIR /app
 
@@ -41,7 +41,7 @@ LABEL maintainer="SHOP-BAN-DO-AN-NHANH Team" \
       security.hardened="true"
 
 # Cài dumb-init để xử lý signals đúng cách (tránh zombie processes)
-RUN apk add --no-cache dumb-init && npm install -g npm@latest
+RUN apk add --no-cache dumb-init && npm install -g npm@10
 
 WORKDIR /app
 
