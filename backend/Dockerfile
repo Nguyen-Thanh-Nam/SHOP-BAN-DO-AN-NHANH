@@ -55,9 +55,10 @@ RUN npm ci --only=production --ignore-scripts && npm cache clean --force && rm -
 # Copy source code từ builder
 COPY --from=builder /app/server.js ./
 COPY --from=builder /app/src ./src/
+COPY --from=builder /app/uploads ./uploads
 
-# Tạo thư mục uploads và set permissions
-RUN mkdir -p uploads && chmod 755 uploads
+# Đảm bảo quyền truy cập cho thư mục uploads
+RUN chmod -R 755 uploads
 
 # ⚠️ SECURITY: Chạy với non-root user
 # Không dùng root để giảm thiểu thiệt hại nếu bị RCE

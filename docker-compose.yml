@@ -72,6 +72,8 @@ services:
       - "security.tool=trivy"
       - "git.branch=${CI_COMMIT_REF_NAME:-local}"
       - "com.project.name=shopbandoannhanh-backend"
+    volumes:
+      - backend_uploads:/app/uploads
     # ================================================================
     # Healthcheck
     # ================================================================
@@ -200,4 +202,8 @@ volumes:
     driver: local
     labels:
       - "security.encrypted=false"
+      - "backup.required=true"
+  backend_uploads:
+    driver: local
+    labels:
       - "backup.required=true"
