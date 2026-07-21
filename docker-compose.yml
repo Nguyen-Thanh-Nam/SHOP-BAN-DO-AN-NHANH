@@ -41,7 +41,8 @@ services:
       db:
         condition: service_healthy     # ✅ Chờ DB healthy thực sự
     networks:
-      - shop_internal                   # ✅ Internal network — không public
+      - shop_internal                   # ✅ Giao tiếp nội bộ với DB
+      - shop_public                     # ✅ Để có thể expose port 4000 cho frontend (trình duyệt) gọi API
     # ================================================================
     # Security options
     # ================================================================
