@@ -50,7 +50,7 @@ COPY --from=builder /usr/bin/dumb-init /usr/bin/dumb-init
 
 # Copy chỉ production dependencies
 COPY --from=builder /app/package*.json ./
-RUN npm ci --only=production --ignore-scripts && npm cache clean --force
+RUN npm ci --only=production --ignore-scripts && npm cache clean --force && rm -rf /usr/local/lib/node_modules/npm /usr/local/bin/npm /usr/local/bin/npx
 
 # Copy source code từ builder
 COPY --from=builder /app/server.js ./
